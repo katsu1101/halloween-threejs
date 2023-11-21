@@ -11,6 +11,89 @@
     const TREE_HEIGHT = 6; // ツリーの高さ
     const TREE_RADIUS = 2; // ツリーの半径
     let angle = 0; // カメラの角度
+    const ORNAMENTS_COUNT = 25; // オーナメントの総数
+    const SPIRAL_TURNS = 4; // 螺旋の巻数
+    const STEPS = 1000; // 数値積分のステップ数
+
+    function getSpiralPointCoordinates(treeHeight, treeRadius, spiralTurns, steps, fraction) {
+        // 総螺旋の長さを計算
+        // 螺旋の長さを計算するための積分処理
+        let totalLength = 0;
+        let dTheta = (2 * Math.PI * spiralTurns) / steps;
+
+        for (let i = 0; i < steps; i++) {
+            let startTheta = i * dTheta;
+            let endTheta = (i + 1) * dTheta;
+            // 台形則による数値積分
+            totalLength += (spiralLengthDifferential(startTheta) + spiralLengthDifferential(endTheta)) / 2 * dTheta;
+        }
+
+        const totalSpiralLength = totalLength;
+
+        // 目的の距離を計算
+        const targetDistance = totalSpiralLength * fraction;
+
+        // 現在の距離と角度
+        let currentDistance = 0;
+        let currentAngle = 0;
+
+        // 螺旋の半径を計算する関数
+        function spiralRadius(theta) {
+            let z = (treeHeight / (2 * Math.PI * spiralTurns)) * theta;
+            return treeRadius * (1 - z / treeHeight);
+        }
+
+        // 螺旋の長さの微分を計算する関数
+        function spiralLengthDifferential(theta) {
+            let dr_dtheta = -treeHeight / (2 * Math.PI * spiralTurns) * treeRadius / treeHeight;
+            let dz_dtheta = treeHeight / (2 * Math.PI * spiralTurns);
+            let r = spiralRadius(theta);
+
+            // dx/dtheta, dy/dtheta, dz/dtheta の計算
+            let dx_dtheta = dr_dtheta * Math.cos(theta) - r * Math.sin(theta);
+            let dy_dtheta = dr_dtheta * Math.sin(theta) + r * Math.cos(theta);
+
+            // 曲線の微小区間の長さを計算
+            return Math.sqrt(dx_dtheta * dx_dtheta + dy_dtheta * dy_dtheta + dz_dtheta * dz_dtheta);
+        }
+
+        // 螺旋をたどる
+        for (let i = 0; i < steps; i++) {
+            let startTheta = i * dTheta;
+            let endTheta = (i + 1) * dTheta;
+            let segmentLength = (spiralLengthDifferential(startTheta) + spiralLengthDifferential(endTheta)) / 2 * dTheta;
+
+            // 次のポイントが目的の距離を超える場合、そのセグメント上で目的の点を見つける
+            if (currentDistance + segmentLength >= targetDistance) {
+                // 目的の点までの残りの距離
+                let remainingDistance = targetDistance - currentDistance;
+                // 残りの距離から角度の増分を計算
+                let deltaTheta = remainingDistance / spiralLengthDifferential(startTheta);
+                currentAngle = startTheta + deltaTheta;
+
+                // 螺旋の半径と高さを計算
+                let z = (treeHeight / (2 * Math.PI * spiralTurns)) * currentAngle;
+                let r = treeRadius * (1 - z / treeHeight);
+
+                // 3D座標を計算
+                let x = r * Math.cos(currentAngle);
+                let y = r * Math.sin(currentAngle);
+
+                // 目的の3D座標を返す
+                return { x: x, y: z, z: y };
+            }
+
+            // 現在の距離を更新
+            currentDistance += segmentLength;
+        }
+
+        // 目的の距離が螺旋の長さを超えている場合、最終的な座標を返す
+        let z = treeHeight / 2; // 螺旋の最高点
+        let r = 0; // 最高点での半径は0
+        let x = r * Math.cos(currentAngle);
+        let y = r * Math.sin(currentAngle);
+        return { x: x, y: z, z: y };
+    }
 
     // シーンの作成
     let scene = new THREE.Scene();
@@ -33,31 +116,33 @@
     // 画像を読み込む
     let loader = new THREE.TextureLoader();
     loader.load('magicaldraw_20231029_230901.png', function(texture) {
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+
         // 画像を5x5に分割して飾りとして使用
+        let segmentWidth = 1 / 5;
+        let segmentHeight = 1 / 5;
+
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 5; j++) {
-                let segmentWidth = 1 / 5;
-                let segmentHeight = 1 / 5;
-
-                // テクスチャのオフセットとリピートを設定
-                texture.repeat.set(segmentWidth, segmentHeight);
-                texture.offset.set(i * segmentWidth, 1 - segmentHeight - j * segmentHeight);
+                // 各飾りに対してテクスチャのクローンを作成
+                let ornamentTexture = texture.clone();
+                ornamentTexture.needsUpdate = true;
+                ornamentTexture.repeat.set(segmentWidth, segmentHeight);
+                ornamentTexture.offset.set(((i + 3) % 5) * segmentWidth, ((j+3) % 5) * segmentHeight);
 
                 // 飾りの作成
                 let ornamentGeometry = new THREE.PlaneGeometry(0.5, 0.5);
-                let ornamentMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+                let ornamentMaterial = new THREE.MeshBasicMaterial({ map: ornamentTexture, side: THREE.DoubleSide });
                 let ornament = new THREE.Mesh(ornamentGeometry, ornamentMaterial);
 
-                // 飾りの位置を設定
-                let theta = Math.random() * Math.PI / 2;
-                let phi = Math.random() * 2 * Math.PI;
-                let heightFactor = 1 - Math.cos(theta);
-                let height = TREE_HEIGHT * heightFactor;
-                let radius = TREE_RADIUS * heightFactor;
+                let a = getSpiralPointCoordinates(TREE_HEIGHT, TREE_RADIUS, SPIRAL_TURNS, STEPS, (i*5+j) / ORNAMENTS_COUNT)
 
-                ornament.position.x = radius * Math.sin(theta) * Math.cos(phi);
-                ornament.position.y = height - (TREE_HEIGHT / 2);
-                ornament.position.z = radius * Math.sin(theta) * Math.sin(phi);
+                // オーナメントの位置を設定
+                ornament.position.set(a.x, a.y+segmentHeight * 2 - TREE_HEIGHT / 2, a.z);
+
+                // オーナメントをツリーの中心から外側に向ける
+                ornament.lookAt(new THREE.Vector3(0, ornament.position.y, 0));
 
                 scene.add(ornament);
             }
