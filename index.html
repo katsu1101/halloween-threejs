@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Three.js Christmas Tree Sample</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.101.1/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 <script>
@@ -107,6 +108,14 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    // OrbitControlsの作成
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // インタラクティブな動きに抵抗（ダンピング）を追加
+    controls.dampingFactor = 0.25; // ダンピングの量
+    controls.enableZoom = true; // ズームを有効にする
+    controls.autoRotate = true; // カメラの自動回転を有効にする
+    controls.autoRotateSpeed = 0.5; // 自動回転の速度
+
     // クリスマスツリーの作成
     let treeGeometry = new THREE.ConeGeometry(TREE_RADIUS, TREE_HEIGHT, 32);
     let treeMaterial = new THREE.MeshBasicMaterial({ color: 0x008000 });
@@ -155,10 +164,13 @@
         requestAnimationFrame(animate);
 
         // カメラの回転（円軌道を描く）
-        angle += 0.01;
-        camera.position.x = 10 * Math.sin(angle);
-        camera.position.z = 10 * Math.cos(angle);
-        camera.lookAt(scene.position); // カメラは常にシーンの中心を見る
+        // angle += 0.01;
+        // camera.position.x = 10 * Math.sin(angle);
+        // camera.position.z = 10 * Math.cos(angle);
+        // camera.lookAt(scene.position); // カメラは常にシーンの中心を見る
+
+        // OrbitControlsの更新
+        controls.update(); // カメラの回転（円軌道を描く）はもはや必要ありません。
 
         // シーンのレンダリング
         renderer.render(scene, camera);
