@@ -108,6 +108,10 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    // 背景を透明に設定
+    renderer.setClearColor(0x000000, 0); // 背景色を黒（0x000000）で透明度0に
+    document.body.appendChild(renderer.domElement);
+
     // OrbitControlsの作成
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; // インタラクティブな動きに抵抗（ダンピング）を追加
@@ -121,6 +125,46 @@
     let treeMaterial = new THREE.MeshBasicMaterial({ color: 0x008000 });
     let tree = new THREE.Mesh(treeGeometry, treeMaterial);
     scene.add(tree);
+
+    // 星形のジオメトリを作成
+    function createStarShape() {
+        const shape = new THREE.Shape();
+        const outerRadius = 0.3; // 星の外側の半径
+        const innerRadius = 0.15; // 星の内側の半径
+        const numPoints = 5;
+
+        for (let i = 0; i < numPoints * 2; i++) {
+            const angle = (i * Math.PI * 2) / (numPoints * 2);
+            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+
+            if (i === 0) {
+                shape.moveTo(x, y);
+            } else {
+                shape.lineTo(x, y);
+            }
+        }
+
+        shape.closePath();
+        return shape;
+    }
+
+    // 星形のメッシュを作成
+    const starShape = createStarShape();
+    const extrudeSettings = {
+        steps: 1,
+        depth: 0.1,
+        bevelEnabled: false
+    };
+    const starGeometry = new THREE.ExtrudeGeometry(starShape, extrudeSettings);
+    const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const star = new THREE.Mesh(starGeometry, starMaterial);
+
+    // 星を円錐の頂上に配置
+    star.position.y = TREE_HEIGHT / 2 + 0.2; // 星を円錐の少し上に配置
+    star.rotation.z = Math.PI / 2; // 星をX軸周りに90度回転
+    scene.add(star);
 
     // 画像を読み込む
     let loader = new THREE.TextureLoader();
@@ -141,7 +185,7 @@
                 ornamentTexture.offset.set(((i + 3) % 5) * segmentWidth, ((j+3) % 5) * segmentHeight);
 
                 // 飾りの作成
-                let ornamentGeometry = new THREE.PlaneGeometry(0.5, 0.5);
+                let ornamentGeometry = new THREE.PlaneGeometry(0.8, 0.8);
                 let ornamentMaterial = new THREE.MeshBasicMaterial({ map: ornamentTexture, side: THREE.DoubleSide });
                 let ornament = new THREE.Mesh(ornamentGeometry, ornamentMaterial);
 
