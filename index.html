@@ -11,7 +11,6 @@
     // 定数の設定
     const TREE_HEIGHT = 6; // ツリーの高さ
     const TREE_RADIUS = 2; // ツリーの半径
-    let angle = 0; // カメラの角度
     const ORNAMENTS_COUNT = 25; // オーナメントの総数
     const SPIRAL_TURNS = 4; // 螺旋の巻数
     const STEPS = 1000; // 数値積分のステップ数
@@ -96,41 +95,11 @@
         return { x: x, y: z, z: y };
     }
 
-    // シーンの作成
-    let scene = new THREE.Scene();
-
-    // カメラの作成
-    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 10;
-
-    // レンダラーの作成
-    let renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    // 背景を透明に設定
-    renderer.setClearColor(0x000000, 0); // 背景色を黒（0x000000）で透明度0に
-    document.body.appendChild(renderer.domElement);
-
-    // OrbitControlsの作成
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; // インタラクティブな動きに抵抗（ダンピング）を追加
-    controls.dampingFactor = 0.25; // ダンピングの量
-    controls.enableZoom = true; // ズームを有効にする
-    controls.autoRotate = true; // カメラの自動回転を有効にする
-    controls.autoRotateSpeed = 0.5; // 自動回転の速度
-
-    // クリスマスツリーの作成
-    let treeGeometry = new THREE.ConeGeometry(TREE_RADIUS, TREE_HEIGHT, 32);
-    let treeMaterial = new THREE.MeshBasicMaterial({ color: 0x008000 });
-    let tree = new THREE.Mesh(treeGeometry, treeMaterial);
-    scene.add(tree);
-
     // 星形のジオメトリを作成
     function createStarShape() {
         const shape = new THREE.Shape();
-        const outerRadius = 0.3; // 星の外側の半径
-        const innerRadius = 0.15; // 星の内側の半径
+        const outerRadius = 0.6; // 星の外側の半径
+        const innerRadius = 0.3; // 星の内側の半径
         const numPoints = 5;
 
         for (let i = 0; i < numPoints * 2; i++) {
@@ -150,25 +119,39 @@
         return shape;
     }
 
-    // 星形のメッシュを作成
-    const starShape = createStarShape();
-    const extrudeSettings = {
-        steps: 1,
-        depth: 0.1,
-        bevelEnabled: false
-    };
-    const starGeometry = new THREE.ExtrudeGeometry(starShape, extrudeSettings);
-    const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-    const star = new THREE.Mesh(starGeometry, starMaterial);
+    // テクスチャとシーンを更新する関数
+    function updateSceneWithNewTexture(texture) {
+        // シーンからすべてのオブジェクトを削除
+        while(scene.children.length > 0){
+            scene.remove(scene.children[0]);
+        }
 
-    // 星を円錐の頂上に配置
-    star.position.y = TREE_HEIGHT / 2 + 0.2; // 星を円錐の少し上に配置
-    star.rotation.z = Math.PI / 2; // 星をX軸周りに90度回転
-    scene.add(star);
+        // クリスマスツリーと星を再度追加
+        let treeGeometry = new THREE.ConeGeometry(TREE_RADIUS, TREE_HEIGHT, 32);
+        let treeMaterial = new THREE.MeshBasicMaterial({ color: 0x008000 });
+        let tree = new THREE.Mesh(treeGeometry, treeMaterial);
+        scene.add(tree);
 
-    // 画像を読み込む
-    let loader = new THREE.TextureLoader();
-    loader.load('magicaldraw_20231029_230901.png', function(texture) {
+        // 星形のメッシュを作成
+        const starShape = createStarShape();
+        const extrudeSettings = {
+            steps: 1,
+            depth: 0.1,
+            bevelEnabled: false
+        };
+        const starGeometry = new THREE.ExtrudeGeometry(starShape, extrudeSettings);
+        const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const star = new THREE.Mesh(starGeometry, starMaterial);
+
+        // 星を円錐の頂上に配置
+        star.position.y = TREE_HEIGHT / 2 + 0.6; // 星を円錐の少し上に配置
+        star.rotation.z = Math.PI / 2; // 星をX軸周りに90度回転
+        scene.add(star);
+
+
+        // 新しいテクスチャでオーナメントを作成し、シーンに追加
+        // ...（オーナメントを作成し、シーンに追加するコード）...
+        // クリスマスツリーの作成
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
 
@@ -186,7 +169,12 @@
 
                 // 飾りの作成
                 let ornamentGeometry = new THREE.PlaneGeometry(0.8, 0.8);
-                let ornamentMaterial = new THREE.MeshBasicMaterial({ map: ornamentTexture, side: THREE.DoubleSide });
+                let ornamentMaterial = new THREE.MeshBasicMaterial({
+                    map: ornamentTexture,
+                    side: THREE.DoubleSide,
+                    alphaTest: 0.5, // 透明度の閾値を設定（0.0から1.0までの値）
+                    transparent: true // 透明度を有効にする
+                });
                 let ornament = new THREE.Mesh(ornamentGeometry, ornamentMaterial);
 
                 let a = getSpiralPointCoordinates(TREE_HEIGHT, TREE_RADIUS, SPIRAL_TURNS, STEPS, (i*5+j) / ORNAMENTS_COUNT)
@@ -195,23 +183,74 @@
                 ornament.position.set(a.x, a.y+segmentHeight * 2 - TREE_HEIGHT / 2, a.z);
 
                 // オーナメントをツリーの中心から外側に向ける
-                ornament.lookAt(new THREE.Vector3(0, ornament.position.y, 0));
+                ornament.lookAt(new THREE.Vector3(ornament.position.x*2, ornament.position.y, ornament.position.z*2));
 
                 scene.add(ornament);
             }
         }
-    });
+    }
 
+    // カメラの作成
+    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 7;
+
+    // レンダラーの作成
+    let renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 背景を透明に設定
+    renderer.setClearColor(0x000000, 0); // 背景色を黒（0x000000）で透明度0に
+    document.body.appendChild(renderer.domElement);
+
+    // OrbitControlsの作成
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // インタラクティブな動きに抵抗（ダンピング）を追加
+    controls.dampingFactor = 0.25; // ダンピングの量
+    controls.enableZoom = true; // ズームを有効にする
+    controls.autoRotate = true; // カメラの自動回転を有効にする
+    controls.autoRotateSpeed = 0.5; // 自動回転の速度
+
+    // シーンの作成
+    let scene = new THREE.Scene();
+
+    // 画像を読み込む
+    function loadInitialTexture(imagePath) {
+        let textureLoader = new THREE.TextureLoader();
+        textureLoader.load(imagePath, function(texture) {
+            // テクスチャが正しく読み込まれた後にシーンを更新
+            updateSceneWithNewTexture(texture);
+        });
+    }
+    loadInitialTexture('magicaldraw_20231107_225739.png')
+
+
+    document.addEventListener('dragover', function(event) {
+        event.preventDefault();
+    }, false);
+
+    document.addEventListener('drop', function(event) {
+        event.preventDefault();
+        let file = event.dataTransfer.files[0];
+        handleFile(file);
+    }, false);
+
+    function handleFile(file) {
+        let reader = new FileReader();
+        reader.onload = function(event) {
+            let dataUri = event.target.result;
+            let textureLoader = new THREE.TextureLoader();
+            textureLoader.load(dataUri, function(texture) {
+                // テクスチャが正しく読み込まれた後にシーンを更新
+                updateSceneWithNewTexture(texture);
+            });
+        };
+        reader.readAsDataURL(file);
+    }
 
     // レンダリングループ
     function animate() {
         requestAnimationFrame(animate);
-
-        // カメラの回転（円軌道を描く）
-        // angle += 0.01;
-        // camera.position.x = 10 * Math.sin(angle);
-        // camera.position.z = 10 * Math.cos(angle);
-        // camera.lookAt(scene.position); // カメラは常にシーンの中心を見る
 
         // OrbitControlsの更新
         controls.update(); // カメラの回転（円軌道を描く）はもはや必要ありません。
@@ -219,7 +258,6 @@
         // シーンのレンダリング
         renderer.render(scene, camera);
     }
-
     animate();
 
 </script>
