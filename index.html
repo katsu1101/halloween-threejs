@@ -14,6 +14,7 @@
     const ORNAMENTS_COUNT = 25; // オーナメントの総数
     const SPIRAL_TURNS = 4; // 螺旋の巻数
     const STEPS = 1000; // 数値積分のステップ数
+    const DEFAULT_TEXTURE = 'default_texture.png';
 
     function getSpiralPointCoordinates(treeHeight, treeRadius, spiralTurns, steps, fraction) {
         // 総螺旋の長さを計算
@@ -222,7 +223,7 @@
             updateSceneWithNewTexture(texture);
         });
     }
-    loadInitialTexture('magicaldraw_20231107_225739.png')
+    loadInitialTexture(DEFAULT_TEXTURE)
 
 
     document.addEventListener('dragover', function(event) {
