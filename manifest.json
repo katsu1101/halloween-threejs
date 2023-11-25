@@ -1,7 +1,7 @@
 {
   "name": "Xmas Tree",
   "short_name": "XmasTree",
-  "start_url": "/",
+  "start_url": "https://katsu1101.github.io/xmas-threejs/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
