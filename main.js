@@ -151,7 +151,12 @@ function updateSceneWithNewTexture(texture) {
     // positions配列から属性を作成
     particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 
-    let particleMaterial = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 0.1 });
+    let particleMaterial = new THREE.PointsMaterial({
+        color: 0xFFFFFF,
+        size: 0.2,
+        transparent: true, // 透明度を有効にする
+        opacity: 0.6        // 透明度の値を設定（0: 完全に透明, 1: 完全に不透明）
+    });
     let particlesMesh = new THREE.Points(particleGeometry, particleMaterial);
     scene.add(particlesMesh);
 
