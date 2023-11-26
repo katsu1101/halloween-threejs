@@ -1,0 +1,16 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* スクロールバーを隠す */
+    width: 100%;
+    height: 100%;
+}
+
+#fileOpenButton {
+    position: absolute; /* キャンバス内の特定の位置に配置 */
+    right: 1vh; /* 画面高さの1%分、右からの位置 */
+    bottom: 1vh; /* 画面高さの1%分、下からの位置 */
+    padding: 1vh 2vh; /* 画面高さの1%と2%でパディングを設定 */
+    z-index: 100; /* キャンバスより上に表示 */
+    font-size: min(3vh, 60px); /* 画面高さの3%と16pxのうち大きい方をフォントサイズとして適用 */
+}
