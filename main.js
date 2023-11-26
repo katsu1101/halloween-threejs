@@ -124,6 +124,37 @@ function updateSceneWithNewTexture(texture) {
     let tree = new THREE.Mesh(treeGeometry, treeMaterial);
     scene.add(tree);
 
+    // 雪を配置
+    let particleGeometry = new THREE.BufferGeometry();
+    const particles = 1000;
+    const positions = [];
+
+    for (let i = 0; i < particles; i++) {
+        // ツリーの底から頂上までの高さの比率をランダムに決定
+        let y = Math.random();
+
+        // ツリーの底の半径から頂点の半径までの間でランダムに半径を決定
+        let r = TREE_RADIUS * (1 - y); // yが0なら底の半径、yが1なら0（頂点）
+
+        // パーティクルのx, z位置をランダムに決定（円錐の断面内）
+        let theta = Math.random() * Math.PI * 2; // 円周上のランダムな角度
+        let x = r * Math.cos(theta);
+        let z = r * Math.sin(theta);
+
+        // パーティクルの高さを決定（底からの距離）
+        y *= TREE_HEIGHT; // ツリーの高さに比率を乗じる
+
+        // 頂点からの逆比率でスケールダウンしていく
+        positions.push(x, y - TREE_HEIGHT / 2, z); // yの位置を調整
+    }
+
+    // positions配列から属性を作成
+    particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+    let particleMaterial = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 0.1 });
+    let particlesMesh = new THREE.Points(particleGeometry, particleMaterial);
+    scene.add(particlesMesh);
+
     // 星形のメッシュを作成
     const starShape = createStarShape();
     const extrudeSettings = {
