@@ -264,6 +264,10 @@ document.addEventListener('drop', function(event) {
 }, false);
 
 document.getElementById('fileInput').addEventListener('change', function(event) {
+    event.preventDefault();
+    if (!event.target.files || event.target.files.length === 0) {
+        return; // ファイルが選択されていない場合、ここで処理を終了
+    }
     let file = event.target.files[0];
     handleFile(file);
 });
