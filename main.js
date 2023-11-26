@@ -126,7 +126,7 @@ function updateSceneWithNewTexture(texture) {
 
     // 雪を配置
     let particleGeometry = new THREE.BufferGeometry();
-    const particles = 1000;
+    const particles = 100;
     const positions = [];
 
     for (let i = 0; i < particles; i++) {
@@ -153,7 +153,7 @@ function updateSceneWithNewTexture(texture) {
 
     let particleMaterial = new THREE.PointsMaterial({
         color: 0xFFFFFF,
-        size: 0.2,
+        size: 0.3,
         transparent: true, // 透明度を有効にする
         opacity: 0.6        // 透明度の値を設定（0: 完全に透明, 1: 完全に不透明）
     });
@@ -279,6 +279,9 @@ function handleFile(file) {
         textureLoader.load(dataUri, function(texture) {
             // テクスチャが正しく読み込まれた後にシーンを更新
             updateSceneWithNewTexture(texture);
+        },null , function(error) {
+            // テクスチャ読み込み時のエラー処理
+            console.error('テクスチャの読み込みに失敗しました:', error);
         });
     };
     reader.readAsDataURL(file);
