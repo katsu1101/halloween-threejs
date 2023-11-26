@@ -196,38 +196,42 @@ function updateSceneWithNewTexture(scene) {
             // オーナメントをツリーの中心から外側に向ける
             ornament.lookAt(new THREE.Vector3(ornament.position.x*2, ornament.position.y, ornament.position.z*2));
             ornaments[i*5 + j] = ornament
-
-        }
-    }
-    for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 5; j++) {
             scene.add(ornaments[i*5 + j]);
         }
     }
 }
 
-function updateTexture(texture) {
-
-    // 画像を5x5に分割して飾りとして使用
+let texture
+function updateTexture(newTexture) {
+    texture = newTexture
     let segmentWidth = 1 / 5;
     let segmentHeight = 1 / 5;
 
-    // 新しいテクスチャでオーナメントを作成し、シーンに追加
-    // ...（オーナメントを作成し、シーンに追加するコード）...
-    // クリスマスツリーの作成
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
+    const a = [
+        [2,2],
+        [2,1],[3,1],[3,2],[3,3],[2,3],[1,3],[1,2],[1,1],
+        [2,0],[3,0],[4,0],[4,1],[4,2],[4,3],[4,4],[3,4],
+        [2,4],[1,4],[0,4],[0,3],[0,2],[0,1],[0,0],[1,0],
+    ]
 
     for (let i = 0; i < 5; i++) {
         for (let j = 0; j < 5; j++) {
-            // 各飾りに対してテクスチャのクローンを作成
-            let ornamentTexture = texture.clone();
-            ornamentTexture.needsUpdate = true;
-            ornamentTexture.repeat.set(segmentWidth, segmentHeight);
-            ornamentTexture.offset.set(((i + 3) % 5) * segmentWidth, ((j+3) % 5) * segmentHeight);
+            // 新しいテクスチャを各オーナメントに適用
+            ornaments[i * 5 + j].material.map = texture;
+            const b=a[24-(i * 5 + j)]
+            // UV座標の配列を作成
+            const uvs = [];
+            // 左下、左上、右上、右下の順でUV座標を設定
+            uvs.push(b[0] * segmentWidth, (b[1]+1) * segmentHeight); // 左上
+            uvs.push((b[0]+1) * segmentWidth, (b[1]+1) * segmentHeight); // 右上
+            uvs.push(b[0] * segmentWidth, b[1] * segmentHeight); // 左下
+            uvs.push((b[0]+1) * segmentWidth, b[1] * segmentHeight); // 右下
 
-            ornaments[i*5 + j].material.map = ornamentTexture
-            ornaments[i*5 + j].material.needsUpdate = true;
+            // ジオメトリのuv属性を新しい配列で更新
+            ornaments[i * 5 + j].geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2));
+            ornaments[i * 5 + j].material.needsUpdate = true;
         }
     }
 }
@@ -258,7 +262,7 @@ let scene = new THREE.Scene();
 
 // 画像を読み込む
 function loadInitialTexture(imagePath) {
-    let textureLoader = new THREE.TextureLoader();
+    const textureLoader = new THREE.TextureLoader();
     textureLoader.load(imagePath, function(texture) {
         // テクスチャが正しく読み込まれた後にシーンを更新
         updateTexture(texture);
@@ -290,7 +294,7 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
     handleFile(file);
 });
 function handleFile(file) {
-    let reader = new FileReader();
+    const reader = new FileReader();
     reader.onload = function(event) {
         let dataUri = event.target.result;
         loadInitialTexture(dataUri)
