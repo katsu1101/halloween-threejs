@@ -111,12 +111,10 @@ function createStarShape() {
     return shape;
 }
 
+let ornaments = []
+
 // テクスチャとシーンを更新する関数
-function updateSceneWithNewTexture(texture) {
-    // シーンからすべてのオブジェクトを削除
-    while(scene.children.length > 0){
-        scene.remove(scene.children[0]);
-    }
+function updateSceneWithNewTexture(scene) {
 
     // クリスマスツリーと星を再度追加
     let treeGeometry = new THREE.ConeGeometry(TREE_RADIUS, TREE_HEIGHT, 32);
@@ -126,7 +124,7 @@ function updateSceneWithNewTexture(texture) {
 
     // 雪を配置
     let particleGeometry = new THREE.BufferGeometry();
-    const particles = 100;
+    const particles = 1000;
     const positions = [];
 
     for (let i = 0; i < particles; i++) {
@@ -153,7 +151,7 @@ function updateSceneWithNewTexture(texture) {
 
     let particleMaterial = new THREE.PointsMaterial({
         color: 0xFFFFFF,
-        size: 0.3,
+        size: 0.2,
         transparent: true, // 透明度を有効にする
         opacity: 0.6        // 透明度の値を設定（0: 完全に透明, 1: 完全に不透明）
     });
@@ -176,29 +174,14 @@ function updateSceneWithNewTexture(texture) {
     star.rotation.z = Math.PI / 2; // 星をX軸周りに90度回転
     scene.add(star);
 
-
-    // 新しいテクスチャでオーナメントを作成し、シーンに追加
-    // ...（オーナメントを作成し、シーンに追加するコード）...
-    // クリスマスツリーの作成
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-
-    // 画像を5x5に分割して飾りとして使用
-    let segmentWidth = 1 / 5;
     let segmentHeight = 1 / 5;
 
     for (let i = 0; i < 5; i++) {
         for (let j = 0; j < 5; j++) {
-            // 各飾りに対してテクスチャのクローンを作成
-            let ornamentTexture = texture.clone();
-            ornamentTexture.needsUpdate = true;
-            ornamentTexture.repeat.set(segmentWidth, segmentHeight);
-            ornamentTexture.offset.set(((i + 3) % 5) * segmentWidth, ((j+3) % 5) * segmentHeight);
-
             // 飾りの作成
             let ornamentGeometry = new THREE.PlaneGeometry(0.8, 0.8);
             let ornamentMaterial = new THREE.MeshBasicMaterial({
-                map: ornamentTexture,
+                // map: ornamentTexture,
                 side: THREE.DoubleSide,
                 alphaTest: 0.5, // 透明度の閾値を設定（0.0から1.0までの値）
                 transparent: true // 透明度を有効にする
@@ -212,8 +195,39 @@ function updateSceneWithNewTexture(texture) {
 
             // オーナメントをツリーの中心から外側に向ける
             ornament.lookAt(new THREE.Vector3(ornament.position.x*2, ornament.position.y, ornament.position.z*2));
+            ornaments[i*5 + j] = ornament
 
-            scene.add(ornament);
+        }
+    }
+    for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 5; j++) {
+            scene.add(ornaments[i*5 + j]);
+        }
+    }
+}
+
+function updateTexture(texture) {
+
+    // 画像を5x5に分割して飾りとして使用
+    let segmentWidth = 1 / 5;
+    let segmentHeight = 1 / 5;
+
+    // 新しいテクスチャでオーナメントを作成し、シーンに追加
+    // ...（オーナメントを作成し、シーンに追加するコード）...
+    // クリスマスツリーの作成
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+
+    for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 5; j++) {
+            // 各飾りに対してテクスチャのクローンを作成
+            let ornamentTexture = texture.clone();
+            ornamentTexture.needsUpdate = true;
+            ornamentTexture.repeat.set(segmentWidth, segmentHeight);
+            ornamentTexture.offset.set(((i + 3) % 5) * segmentWidth, ((j+3) % 5) * segmentHeight);
+
+            ornaments[i*5 + j].material.map = ornamentTexture
+            ornaments[i*5 + j].material.needsUpdate = true;
         }
     }
 }
@@ -247,11 +261,15 @@ function loadInitialTexture(imagePath) {
     let textureLoader = new THREE.TextureLoader();
     textureLoader.load(imagePath, function(texture) {
         // テクスチャが正しく読み込まれた後にシーンを更新
-        updateSceneWithNewTexture(texture);
+        updateTexture(texture);
+    },null , function(error) {
+        // テクスチャ読み込み時のエラー処理
+        console.error('テクスチャの読み込みに失敗しました:', error);
     });
 }
-loadInitialTexture(DEFAULT_TEXTURE)
 
+updateSceneWithNewTexture(scene);
+loadInitialTexture(DEFAULT_TEXTURE)
 
 document.addEventListener('dragover', function(event) {
     event.preventDefault();
@@ -275,14 +293,7 @@ function handleFile(file) {
     let reader = new FileReader();
     reader.onload = function(event) {
         let dataUri = event.target.result;
-        let textureLoader = new THREE.TextureLoader();
-        textureLoader.load(dataUri, function(texture) {
-            // テクスチャが正しく読み込まれた後にシーンを更新
-            updateSceneWithNewTexture(texture);
-        },null , function(error) {
-            // テクスチャ読み込み時のエラー処理
-            console.error('テクスチャの読み込みに失敗しました:', error);
-        });
+        loadInitialTexture(dataUri)
     };
     reader.readAsDataURL(file);
 }
