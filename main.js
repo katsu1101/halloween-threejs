@@ -7,6 +7,10 @@ const SPIRAL_TURNS = 4; // 螺旋の巻数
 const STEPS = 1000; // 数値積分のステップ数
 const DEFAULT_TEXTURE = 'default_texture.png';
 
+let bats = [];
+const clock = new THREE.Clock(); // 羽ばたき＆周回アニメ用
+
+// 螺旋上の点の3D座標を取得する関数
 function getSpiralPointCoordinates(treeHeight, treeRadius, spiralTurns, steps, fraction) {
     // 総螺旋の長さを計算
     // 螺旋の長さを計算するための積分処理
@@ -111,16 +115,100 @@ function createStarShape() {
     return shape;
 }
 
+// 魔女の帽子を作成
+function createWitchHat() {
+    const hatGroup = new THREE.Group();
+
+    // 円錐部分（とんがり）
+    const coneGeometry = new THREE.ConeGeometry(0.35, 0.75, 16);
+    const coneMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+    cone.position.y = 0.375; // 高さの半分持ち上げて中心を合わせる
+    hatGroup.add(cone);
+
+    // つば部分（円盤）
+    const brimGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.05, 16);
+    const brimMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const brim = new THREE.Mesh(brimGeometry, brimMaterial);
+    brim.position.y = 0; // 底に配置
+    hatGroup.add(brim);
+
+    return hatGroup;
+}
 let ornaments = []
+// コウモリを飛ばす
+function createBat() {
+    const bat = new THREE.Group();
+
+    // 胴体
+    const bodyGeo = new THREE.SphereGeometry(0.12, 12, 12);
+    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    bat.add(body);
+
+    // 翼（薄い板：三角に近い矩形を回転させて表現）
+    const wingGeo = new THREE.PlaneGeometry(0.45, 0.18);
+    const wingMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.DoubleSide });
+    const leftWing = new THREE.Mesh(wingGeo, wingMat);
+    const rightWing = new THREE.Mesh(wingGeo, wingMat);
+
+    leftWing.position.set(-0.25, 0, 0);
+    rightWing.position.set(0.25, 0, 0);
+    // 初期角度（少し下げておく）
+    leftWing.rotation.y = Math.PI * 0.05;
+    rightWing.rotation.y = -Math.PI * 0.05;
+
+    bat.add(leftWing);
+    bat.add(rightWing);
+
+    // 羽にアクセスしやすいように保存
+    bat.userData.leftWing = leftWing;
+    bat.userData.rightWing = rightWing;
+
+    return bat;
+}
 
 // テクスチャとシーンを更新する関数
 function updateSceneWithNewTexture(scene) {
 
-    // クリスマスツリーと星を再度追加
+    // ハロウィンツリーを再度追加
     let treeGeometry = new THREE.ConeGeometry(TREE_RADIUS, TREE_HEIGHT, 32);
-    let treeMaterial = new THREE.MeshBasicMaterial({ color: 0x008000 });
+    let treeMaterial = new THREE.MeshBasicMaterial({ color: 0x004000 });
     let tree = new THREE.Mesh(treeGeometry, treeMaterial);
     scene.add(tree);
+
+    // 旧：雪パーティクル生成を削除し、コウモリ生成に変更
+    const BAT_COUNT = 13;
+    for (let i = 0; i < BAT_COUNT; i++) {
+        const bat = createBat();
+
+        // ツリー周囲を周回させるためのパラメータを仕込む
+        // 半径・高度・速度・位相はランダムにして群れっぽく
+        bat.userData.orbitRadius = THREE.MathUtils.randFloat(TREE_RADIUS * 0.8, TREE_RADIUS * 1.6);
+        bat.userData.orbitHeight = THREE.MathUtils.randFloat(-TREE_HEIGHT * 0.05, TREE_HEIGHT * 0.45);
+        bat.userData.orbitSpeed  = THREE.MathUtils.randFloat(0.4, 1.0);   // 角速度の係数
+        bat.userData.phase       = Math.random() * Math.PI * 2;
+        bat.userData.flapSpeed   = THREE.MathUtils.randFloat(6.0, 9.0);    // 羽ばたき速度
+        bat.userData.flapAmp     = THREE.MathUtils.degToRad(28);           // 羽ばたき振幅（±角度）
+
+        // 初期位置（位相で決める）
+        const theta = bat.userData.phase;
+        bat.position.set(
+            Math.cos(theta) * bat.userData.orbitRadius,
+            bat.userData.orbitHeight,
+            Math.sin(theta) * bat.userData.orbitRadius
+        );
+
+        // 進行方向を向かせる（ツリー中心(0, y, 0)を基準に接線方向へ）
+        const dir = new THREE.Vector3(
+            -Math.sin(theta), 0, Math.cos(theta)
+        ).normalize();
+        const lookAtPos = new THREE.Vector3().copy(bat.position).add(dir);
+        bat.lookAt(lookAtPos);
+
+        bats.push(bat);
+        scene.add(bat);
+    }
 
     // 雪を配置
     let particleGeometry = new THREE.BufferGeometry();
@@ -150,7 +238,7 @@ function updateSceneWithNewTexture(scene) {
     particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 
     let particleMaterial = new THREE.PointsMaterial({
-        color: 0xFFFFFF,
+        color: 0x008000,
         size: 0.2,
         transparent: true, // 透明度を有効にする
         opacity: 0.6        // 透明度の値を設定（0: 完全に透明, 1: 完全に不透明）
@@ -159,20 +247,24 @@ function updateSceneWithNewTexture(scene) {
     scene.add(particlesMesh);
 
     // 星形のメッシュを作成
-    const starShape = createStarShape();
-    const extrudeSettings = {
-        steps: 1,
-        depth: 0.1,
-        bevelEnabled: false
-    };
-    const starGeometry = new THREE.ExtrudeGeometry(starShape, extrudeSettings);
-    const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-    const star = new THREE.Mesh(starGeometry, starMaterial);
+    // const starShape = createWitchHat();
+    // const extrudeSettings = {
+    //     steps: 1,
+    //     depth: 0.1,
+    //     bevelEnabled: false
+    // };
+    // const starGeometry = new THREE.ExtrudeGeometry(starShape, extrudeSettings);
+    // const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    // const star = new THREE.Mesh(starGeometry, starMaterial);
 
     // 星を円錐の頂上に配置
-    star.position.y = TREE_HEIGHT / 2 + 0.6; // 星を円錐の少し上に配置
-    star.rotation.z = Math.PI / 2; // 星をX軸周りに90度回転
-    scene.add(star);
+    // star.position.y = TREE_HEIGHT / 2 + 0.6; // 星を円錐の少し上に配置
+    // star.rotation.z = Math.PI / 2; // 星をX軸周りに90度回転
+    // scene.add(star);
+
+    const witchHat = createWitchHat();
+    witchHat.position.y = TREE_HEIGHT / 2 + 0.1; // ツリーの上に配置
+    scene.add(witchHat);
 
     let segmentHeight = 1 / 5;
 
@@ -246,7 +338,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // 背景を透明に設定
-renderer.setClearColor(0x000000, 0); // 背景色を黒（0x000000）で透明度0に
+renderer.setClearColor(0x00FF00); // 背景色を黒（0x000000）で透明度0に
 document.body.appendChild(renderer.domElement);
 
 // OrbitControlsの作成
@@ -306,10 +398,40 @@ function handleFile(file) {
 function animate() {
     requestAnimationFrame(animate);
 
-    // OrbitControlsの更新
-    controls.update(); // カメラの回転（円軌道を描く）はもはや必要ありません。
+    const t = clock.getElapsedTime();
 
-    // シーンのレンダリング
+    // コウモリの群れを更新
+    for (const bat of bats) {
+        const r = bat.userData.orbitRadius;
+        const h = bat.userData.orbitHeight;
+        const w = bat.userData.orbitSpeed;
+        const phi = bat.userData.phase;
+
+        // 角度を時間で進める
+        const theta = phi + t * w;
+
+        // 周回（水平円運動）
+        bat.position.set(
+            Math.cos(theta) * r,
+            h + Math.sin(t * 0.6 + phi) * 0.06, // わずかに上下動
+            Math.sin(theta) * r
+        );
+
+        // 進行方向に機体を向ける
+        const dir = new THREE.Vector3(
+            -Math.sin(theta), 0, Math.cos(theta)
+        ).normalize();
+        const lookAtPos = new THREE.Vector3().copy(bat.position).add(dir);
+        bat.lookAt(lookAtPos);
+
+        // 羽ばたき（左右の翼を対称に上下回転）
+        const flap = Math.sin(t * bat.userData.flapSpeed) * bat.userData.flapAmp;
+        bat.userData.leftWing.rotation.z  =  flap;
+        bat.userData.rightWing.rotation.z = -flap;
+    }
+
+    // 既存のOrbitControls更新＆描画
+    controls.update();
     renderer.render(scene, camera);
 }
 animate();
